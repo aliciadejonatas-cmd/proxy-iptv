@@ -17,12 +17,15 @@ app.get('/stream', async (req, res) => {
   try {
     const targetUrl = new URL(streamUrl);
 
+    // Faz a chamada simulando 100% o comportamento do VLC Media Player no Windows
     const response = await fetch(targetUrl.href, {
       method: 'GET',
       headers: {
-        'User-Agent': 'IPTVSmarters/3.1.5 (Linux; Android 10)',
+        'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
         'Accept': '*/*',
+        'Range': 'bytes=0-',
         'Connection': 'keep-alive',
+        'Host': targetUrl.host,
       },
     });
 
@@ -32,6 +35,7 @@ app.get('/stream', async (req, res) => {
 
     const contentType = response.headers.get('content-type') || '';
 
+    // Se for o arquivo de manifesto (.m3u8), reescreve os links internos para passarem por esse proxy
     if (contentType.includes('mpegurl') || contentType.includes('m3u8') || targetUrl.pathname.endsWith('.m3u8')) {
       const manifestText = await response.text();
       const serverProtocol = req.headers['x-forwarded-proto'] || req.protocol;
@@ -51,6 +55,7 @@ app.get('/stream', async (req, res) => {
       return res.status(200).send(rewrittenManifest);
     }
 
+    // Se for um bloco de vídeo (.ts), repassa o fluxo direto
     res.setHeader('Content-Type', contentType || 'video/mp2t');
     response.body.pipe(res);
 
